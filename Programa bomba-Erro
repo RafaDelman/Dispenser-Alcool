@@ -1,0 +1,185 @@
+// Código Dispenser com termometro Inserção dos LEDS tentativa 1
+//Codigo com Bomba de Submersão
+// tá lendo a distância no sensor e acionando a bomba, display liga "termometro, aciona termometro e lê temperatura.
+//FUNCIONANDO TUDOOOOOOOOO FALTA COLOCAR DELAY E RETURN NO LED AMARELO E VERMELHO
+
+
+#include <Servo.h>
+//Term
+#include <SPI.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SPITFT.h>
+#include <Adafruit_SPITFT_Macros.h>
+#include <gfxfont.h>
+#include <Adafruit_SSD1306.h>
+#include <splash.h>
+#include <SparkFunMLX90614.h>
+#include <LiquidCrystal.h>
+
+
+// Definir portas
+#define trigPin A2
+#define echoPin A3
+#define bomba 5
+
+//Definir variáveis
+int distance;
+long duration;
+float a;
+float objectT;
+float ambientT;
+//Term
+IRTherm therm;
+Adafruit_SSD1306 display = Adafruit_SSD1306();
+
+
+void setup()
+{
+  // put your setup code here, to run once:
+  //  s.attach(SERVO);
+  Serial.begin(9600); // começa a comunicação serial a uma taxa de transmissão de 9600
+  Wire.begin(); //Joing I2C bus (rastros de romildo)
+  // s.write(0); // Inicia o motor na posição zero
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(bomba, OUTPUT);
+ 
+
+  display.begin(0x3C);           // Inicia o Display no endereço 0x3C
+  display.setTextColor(WHITE);   // Define a cor dos caracteres
+  display.clearDisplay();        // Limpa o Display
+  display.setCursor(0, 10);      // Posiciona o cursor
+  display.setTextSize(2);        // Define tamanho da fonte
+  display.println("TERMOMETRO"); // Imprime ...
+  delay(1000);            // Aguarda 1 s
+  display.clearDisplay(); // Limpa o Display
+
+
+
+  // LEDS
+  pinMode (4, OUTPUT); // VERMELHO
+  pinMode (2, OUTPUT); //AMARELO
+  pinMode (3, OUTPUT); //VERDE
+
+}
+
+void loop()
+{
+  // put your main code here, to run repeatedly:
+
+  digitalWrite(trigPin, LOW); //Para limpar o Trig
+  delayMicroseconds(5);
+  digitalWrite(trigPin, HIGH); // Para acionar o sensor
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  duration = pulseIn(echoPin, HIGH); //Lê o echo, retorna pelo pulseIn o comprimento do pulso (duração) em microssegundos
+  distance = duration * 0.034 / 2;
+
+  Serial.print("Distance = ");
+  Serial.print(distance);
+  Serial.println("cm");
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            delay(1500);
+
+  if (distance <= 15)
+  {
+
+    Serial.print("distancia menor");
+  
+      digitalWrite(bomba, HIGH);
+      delay(1000);
+      digitalWrite(bomba, LOW);
+
+    if (therm.read())
+    {
+      Serial.print("Chegou na temp");
+      therm.begin(0x5A);     // Inicia o Sensor no endereço 0x5A
+      therm.setUnit(TEMP_C); // Define a temperatura em Celsius
+
+      ambientT = (1.09 * (therm.ambient()) + 1.45);
+      objectT = (1.09 * (therm.object()) + 1.45);
+
+      display.setCursor(0, 0); // Posiciona o cursor
+      display.setTextSize(1);  // Define tamanho da fonte
+
+      display.print("Objeto: " + String(objectT, 2));
+      display.print(" C");
+      display.print("");       // Cria uma linha em branco
+      display.print("Ambiente: " + String(ambientT, 2));
+      display.print(" C");
+      display.clearDisplay();
+      delay(2000);            // Aguarda 2 segundos
+      display.display(); // Limpa o Display
+    
+    // (rastros de romildo)
+    }    else if (!therm.read())
+    {
+      Serial.println("read() - returns 0 -> fail");
+    }
+    if ((36 < objectT) && (objectT < 38))
+    {
+      delay(2000);            // Aguarda 2 segundos
+      display.clearDisplay();// Limpa o Display
+      display.display();
+      display.setCursor(-10, 10);
+      display.startscrollleft(0x00, 0x0F);
+      display.print("  Voce esta febril");
+      delay(1000);
+   
+      display.println("Aguarde e tente novamente") ;
+      display.println("Caso persista, procure um medico") ;
+      // LED
+      digitalWrite(2, HIGH);// Ativa o led amarelo
+      delay(1000); // Aguarda 1 segundo
+      digitalWrite(2, LOW);  // Desliga o led
+      delay(1000);// Aguarda mais um segundo
+         display.display();
+      delay(3000); // mensagem
+      display.clearDisplay(); //mensagem
+      delay (1000); //mensagem
+      return setup();
+
+    } else if (objectT >= 38) {
+      delay(2000);            // Aguarda 2 segundos
+      display.clearDisplay(); // Limpa o Display
+      display.setCursor(-15, 10);
+      display.startscrollleft(0x00, 0x0F);
+     
+      display.print("  Voce esta com febre");
+      display.display();
+      display.print("Acesso Negado") ;
+      display.print("Procure um medico") ;
+     
+      // LED
+      digitalWrite(4, HIGH);// Ativa o led vermelho
+      delay(1000); // Aguarda 1 segundo
+      digitalWrite(4, LOW);  // Desliga o led
+      delay(1000);// Aguarda mais um segundo
+       display.clearDisplay ();
+      delay(3000); // mensagem
+      display.clearDisplay(); //mensagem
+      delay (1000); //mensagem
+      return setup();
+    }
+    else {
+      delay(2000);            // Aguarda 2 segundos
+      display.clearDisplay(); // Limpa o Display
+      display.setCursor(0, 10);      // Posiciona o cursor
+      display.setTextSize(2);
+      display.println(" Liberado");
+      
+      // LED
+      digitalWrite(3, HIGH);// Ativa o led verde
+      delay(3000); // Aguarda 1 segundo
+      digitalWrite(3, LOW);  // Desliga o led
+      delay(1000);// Aguarda mais um segundo
+      delay(3000); // mensagem
+      display.clearDisplay(); //mensagem
+      display.display();
+      delay (1000); //mensagem
+      return setup();
+
+    }
+  }
+  }
